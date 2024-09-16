@@ -107,7 +107,7 @@ jobs:
           python-version: '3.11'
 
       - name: "AI PR Reviewer"
-        uses: opensource/ai-pr-reviewer@DEVX-new-branch
+        uses: Stellantis-ADX/pr-reviewer-ai@master
         env:
           GITHUB_TOKEN: ${{ steps.create-github-app-token.outputs.token }}
         with:
