@@ -10,7 +10,7 @@ ensuring that no data is sent to OpenAI servers.
 # AI-based PR reviewer and summarizer
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub](https://img.shields.io/github/last-commit/coderabbitai/ai-pr-reviewer/main?style=flat-square)](https://github.com/coderabbitai/ai-pr-reviewer/commits/main)
+[![GitHub](https://img.shields.io/github/last-commit/Stellantis-ADX/pr-reviewer-ai/master?style=flat-square)](https://github.com/Stellantis-ADX/pr-reviewer-ai/commits/master)
 
 ## Overview
 
@@ -53,13 +53,12 @@ For more information on usage, examples, contributing, and
 FAQs, you can refer to the sections below.
 
 - [Overview](#overview)
-- [Professional Version of CodeRabbit](#professional-version-of-coderabbit)
 - [Reviewer Features](#reviewer-features)
 - [Install instructions](#install-instructions)
-- [Conversation with CodeRabbit](#conversation-with-coderabbit)
+- [Conversation with DevToolsAi](#conversation-with-devtoolsai)
 - [Examples](#examples)
 - [Contribute](#contribute)
-- [FAQs](#faqs)
+
 
 
 ## Install instructions
