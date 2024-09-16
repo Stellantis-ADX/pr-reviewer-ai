@@ -1,0 +1,340 @@
+name: 'DevToolsAi reviewer'
+description: 'Inspired by the AI-based PR Reviewer & Summarizer with Chat Capabilities by CodeRabbit'
+inputs:
+  debug:
+    required: false
+    description: 'Enable debug mode'
+    default: 'false'
+  max_files:
+    required: false
+    description:
+      'Max files to summarize and review. Less than or equal to 0 means no
+      limit.'
+    default: '150'
+  review_simple_changes:
+    required: false
+    description: 'Review even when the changes are simple'
+    default: 'false'
+  review_comment_lgtm:
+    required: false
+    description: 'Leave comments even if the patch is LGTM'
+    default: 'false'
+  path_filters:
+    required: false
+    description: |
+      The path filters, e.g., "src/**.py", "!dist/**", each line will be considered as one pattern.
+      See also
+
+      - https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onpushpull_requestpull_request_targetpathspaths-ignore
+      - https://github.com/isaacs/minimatch
+    default: |
+      !dist/**
+      !**/*.3g2
+      !**/*.3gp
+      !**/*.7z
+      !**/*.app
+      !**/*.avi
+      !**/*.arxml
+      !**/*.bin
+      !**/*.bmp
+      !**/*.bz2
+      !**/*.BUILD
+      !**/*.cfg
+      !**/*.class
+      !**/*.csv
+      !**/*.dat
+      !**/*.db
+      !**/*.dll
+      !**/*.doc
+      !**/*.docx
+      !**/*.dot
+      !**/*.dylib
+      !**/*.egg
+      !**/*.eot
+      !**/*.exe
+      !**/*.flac
+      !**/*.flv
+      !**/*.gif
+      !**/*.glif
+      !**/*.gz
+      !**/*.ico
+      !**/*.ini
+      !**/*.iso
+      !**/*.jar
+      !**/*.jpeg
+      !**/*.jpg
+      !**/*.json
+      !**/*.lo
+      !**/*.lock
+      !**/*.log
+      !**/*.m4a
+      !**/*.m4v
+      !**/*.md5sum
+      !**/*.min.js
+      !**/*.min.js.css
+      !**/*.min.js.map
+      !**/*.mkv
+      !**/*.mmd
+      !**/*.mod
+      !**/*.mov
+      !**/*.mp3
+      !**/*.mp4
+      !**/*.nar
+      !**/*.o
+      !**/*.ogg
+      !**/*.otf
+      !**/*.p
+      !**/*.parquet
+      !**/*.pb.go
+      !**/*.pdf
+      !**/*.pem
+      !**/*.pickle
+      !**/*.pkl
+      !**/*.png
+      !**/*.ppt
+      !**/*.pptx
+      !**/*.pub
+      !**/*.pyc
+      !**/*.pyd
+      !**/*.pyo
+      !**/*.rar
+      !**/*.rkt
+      !**/*.rm
+      !**/*.snap
+      !**/*.so
+      !**/*.ss
+      !**/*.sum
+      !**/*.svg
+      !**/*.swf
+      !**/*.tar
+      !**/*.tfstate
+      !**/*.tfstate.backup
+      !**/*.tiff
+      !**/*.toml
+      !**/*.tsv
+      !**/*.ttf
+      !**/*.war
+      !**/*.wasm
+      !**/*.wav
+      !**/*.webm
+      !**/*.wma
+      !**/*.wmv
+      !**/*.woff
+      !**/*.woff2
+      !**/*.work
+      !**/*.xls
+      !**/*.xlsx
+      !**/*.xz
+      !**/*.yaml
+      !**/*.yml
+      !**/*.zip
+      !**/*.zst
+      !**/@generated/**
+      !**/_gen/**
+      !**/gen/**
+      !**/generated/**
+      !**/vendor/**
+  disable_review:
+    required: false
+    description: 'Only provide the summary and skip the code review.'
+    default: 'false'
+  disable_release_notes:
+    required: false
+    description: 'Disable release notes'
+    default: 'false'
+  api_base_url_azure:
+    required: false
+    description: 'The url of the ML cluster api interface.'
+    default: |
+      Mistral-small-azure.swedencentral.models.ai.azure.com
+      Mistral-large-azure.swedencentral.models.ai.azure.com
+  light_model_name_azure:
+    required: false
+    description:
+      'Model to use for simple tasks like summarizing diff on a file. On severless Azure.'
+    default: 'mistral-small-azure'
+  heavy_model_name_azure:
+    required: false
+    description: 'Model to use for complex tasks such as code reviews. On severless Azure.'
+    default: 'mistral-large-azure'
+  light_model_token_azure:
+    required: false
+    description: 'Token for the light model on Azure'
+    default: ''
+  heavy_model_token_azure:
+    required: false
+    description: 'Token for the heavy model on Azure'
+    default: ''
+  api_base_url:
+    required: false
+    description: 'The url of the ML cluster api interface.'
+    default: |
+      atlas.intra.chrysler.com:41443
+      apps.ai-infra.eu-xp.stla-aws.private
+  light_model_name:
+    required: false
+    description:
+      'Model to use for simple tasks like summarizing diff on a file.'
+    default: 'small'
+  light_model_port:
+    required: false
+    description: 'Port for the light model'
+    default: '44901'
+  heavy_model_name:
+    required: false
+    description: 'Model to use for complex tasks such as code reviews.'
+    default: 'big'
+  heavy_model_port:
+    required: false
+    description: 'Port for the heavy model'
+    default: '44902'
+  model_temperature:
+    required: false
+    description: 'Temperature for language model'
+    default: '0.1'
+  retries:
+    required: false
+    description:
+      'How many times to retry in case of timeouts or errors?'
+    default: '5'
+  timeout_ms:
+    required: false
+    description: 'Timeout for API call in millis'
+    default: '360000'
+  concurrency_limit:
+    required: false
+    description: 'How many concurrent API calls to make to ML cluster servers?'
+    default: '6'
+  github_concurrency_limit:
+    required: false
+    description: 'How many concurrent API calls to make to GitHub?'
+    default: '6'
+  system_message:
+    required: false
+    description: 'System message to be sent to model'
+    default: |
+      You are `@devtoolsai` (aka `github-actions[bot]`), a language model.
+      Your purpose is to act as a highly experienced 
+      software engineer and provide a thorough review of the code hunks
+      and suggest code snippets to improve key areas such as:
+        - Logic
+        - Security
+        - Performance
+        - Data races
+        - Consistency
+        - Error handling
+        - Maintainability
+        - Modularity
+        - Complexity
+        - Optimization
+        - Best practices: DRY, SOLID, KISS
+
+      Do not comment on minor code style issues, missing 
+      comments/documentation. Identify and resolve significant 
+      concerns to improve overall code quality while deliberately 
+      disregarding minor issues.
+  summarize:
+    required: false
+    description: 'The prompt for final summarization response'
+    default: |
+      Provide your final response in markdown with the following content:
+
+      - **Walkthrough**: A high-level summary of the overall change instead of 
+        specific files within 80 words. Please don't include any code snippets, any comments, any suggestions.
+        It must stay a high-level summary of the changes.
+      - **Changes**: A markdown table of files and their summaries. Group files 
+        with similar changes together into a single row to save space. 
+        Files with the same name must be grouped together.
+      - **Poem**: Below the changes, include a whimsical, short poem written by 
+        a devtoolsai to celebrate the changes. Write only one quatrain.
+        Format the poem as a quote using the ">" symbol and feel free to use emojis where relevant.
+
+      Avoid additional commentary as this summary will be added as a comment on the 
+      GitHub pull request. Use the titles "Walkthrough" and "Changes" and they must be H2.
+
+  summarize_release_notes:
+    required: false
+    description:
+      'The prompt for generating release notes in the same chat as summarize
+      stage'
+    default: |
+      Craft concise release notes for the pull request. 
+      Focus on the purpose and user impact, categorizing changes as "New Feature", "Bug Fix", 
+      "Documentation", "Refactor", "Style", "Test", "Chore", or "Revert". Provide a bullet-point list, 
+      e.g., "- New Feature: Added search functionality to the UI". Limit your response to 50-100 words 
+      and emphasize features visible to the end-user while omitting code-level details.
+      DONT propose any code changes or any comments or any recommendations in this stage.
+  language:
+    required: false
+    description: ISO code for the response language
+    default: en-US
+  bot_icon:
+    required: false
+    description: 'The icon for the bot'
+    default: '<img src="https://github.adx.fcagroup.com/avatars/u/355" alt="Image description" width="20" height="20">'
+  allow_empty_review:
+    required: false
+    description: 'Allow empty review.'
+    default: 'false'
+  less_spammy:
+    required: false
+    description: 'Will remove all bot suggestions, if there is no conversation. Also change request review message.'
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate hash from requirements.txt
+      id: generate-hash
+      run: |
+        echo "requirements_hash=$(sha256sum ${GITHUB_ACTION_PATH}/requirements.txt | awk '{ print $1 }')" >> $GITHUB_ENV
+        ls ${GITHUB_ACTION_PATH}
+        cat ${GITHUB_ACTION_PATH}/requirements.txt
+      shell: bash
+
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      id: cache-python
+      with:
+        path: ~/_work/_tool/
+        key: ${{ runner.os }}-pr-reviewer-python-${{ env.requirements_hash }}
+        restore-keys: |
+          ${{ runner.os }}-pr-reviewer-python-${{ env.requirements_hash }}
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      id: setup-python
+      with:
+        python-version: 3.11
+        update-environment: false
+
+    - name: Cache Requirements
+      uses: actions/cache@v3
+      id: cache-requirements
+      with:
+        path: ~/_work/_actions/opensource/ai-pr-reviewer/
+        key: ${{ runner.os }}-pr-reviewer-requirements-${{ env.requirements_hash }}
+        restore-keys: |
+          ${{ runner.os }}-pr-reviewer-requirements-${{ env.requirements_hash }}
+
+    - name: Setup venv
+      run: |
+        "${{ steps.setup-python.outputs.python-path }}" -m venv "${GITHUB_ACTION_PATH}/venv"
+      shell: bash
+
+    - name: Install dependencies
+      run: |
+        "${GITHUB_ACTION_PATH}/venv/bin/python" -m pip install -r "${GITHUB_ACTION_PATH}/requirements.txt"
+      shell: bash
+
+    - name: Run action
+      env:
+        INPUTS: ${{ toJSON(inputs) }}
+      run: |
+        source "$GITHUB_ACTION_PATH/venv/bin/activate"
+        "${GITHUB_ACTION_PATH}/venv/bin/python" "${GITHUB_ACTION_PATH}/main.py"
+      shell: bash
+
+branding:
+  icon: 'cpu'
+  color: 'green'
