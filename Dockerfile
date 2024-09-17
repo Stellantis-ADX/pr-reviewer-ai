@@ -32,7 +32,7 @@ RUN cd text-generation-inference && BUILD_EXTENSIONS=true make install-launcher
 
 # Set environment variables
 ENV MODEL_NAME=mistralai/Codestral-22B-v0.1
-ENV HF_API_TOKEN=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
+ENV HF_API_TOKEN=$HF_TOKEN
 
 # Download the model
 RUN mkdir -p /models && \
