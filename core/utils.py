@@ -87,6 +87,9 @@ def get_total_new_lines():
     # Iterate over the files in the pull request
     for file in pull.get_files():
         # Get the diff hunks for the file
+        if file.patch is None:
+            print(f"Skipped: {file.filename} has no patch")
+            continue
         diff_hunks = file.patch.split("@@")[1:]
 
         # Iterate over the diff hunks

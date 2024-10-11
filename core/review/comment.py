@@ -18,7 +18,6 @@ repo = GITHUB_API.get_repo(context.payload.repository.full_name)
 
 
 def handle_review_comment(heavy_bot: Bot, options: Options, prompts: Prompts):
-    print(f"-------------------- DEBUG CONTEXT--------------------:\n {context}")
     commenter = Commenter(context)
     inputs = Inputs()
     if context.event_name != "pull_request_review_comment":

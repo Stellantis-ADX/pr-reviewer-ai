@@ -48,9 +48,6 @@ def do_summary(
     )
     tokens = get_token_count(summarize_prompt)
 
-    print("DEBUG tokens", tokens)
-    print("DEBUG options.light_token_limits", options.light_token_limits)
-
     if tokens > options.light_token_limits.request_tokens:
         print(f"summarize: diff tokens exceeds limit, skip {filename}")
         summaries_failed.append(f"{filename} (diff tokens exceeds limit)")
