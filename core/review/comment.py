@@ -72,7 +72,7 @@ def handle_review_comment(heavy_bot: Bot, options: Options, prompts: Prompts):
         if (
             COMMENT_TAG in comment_chain
             or COMMENT_REPLY_TAG in comment_chain
-            or BOT_NAME in comment.body
+            or BOT_NAME in comment.body.lower()
         ):
             file_diff = ""
             try:
