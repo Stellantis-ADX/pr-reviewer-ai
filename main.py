@@ -1,14 +1,13 @@
-# from dotenv import load_dotenv
-#
-# load_dotenv(dotenv_path="test/pull_request.env")
-
 import asyncio
+import json
 import os
 import sys
 import traceback
 from pathlib import Path
 
+from box import Box
 from github_action_utils import error
+from github_action_utils import notice
 from github_action_utils import notice as warning
 
 from core.bot_hf import HFBot, HFOptions
@@ -32,6 +31,25 @@ from core.utils import get_input_default, get_total_new_lines, string_to_bool
 WORKSPACE_PATH = Path(__file__).resolve().parent
 
 sys.path.insert(1, str(WORKSPACE_PATH))
+
+
+def debug_context():
+    payload = {}
+    if "GITHUB_EVENT_PATH" in os.environ:
+        event_path = os.environ["GITHUB_EVENT_PATH"]
+        if Path(event_path).exists():
+            with open(event_path, "r") as f:
+                # TODO check if need in real GITHUB_ACTIONS
+                payload = Box(json.load(f))
+                if payload.get("payload", None) is not None:
+                    payload = payload.payload
+
+        else:
+            notice(f"[EARLY DEBUG]: GITHUB_EVENT_PATH {event_path} does not exist")
+    payload = json.dumps(payload, indent=2)
+    notice(
+        f"[EARLY DEBUG]: -------------------- EARLY DEBUG CONTEXT--------------------:\n {payload}"
+    )
 
 
 async def run():
@@ -97,6 +115,7 @@ async def run():
                 ACTION_INPUTS, key="summarize_release_notes"
             ),
         )
+
         # Create two bots, one for summary and one for review
 
         try:
@@ -175,6 +194,7 @@ async def run():
 
 
 if __name__ == "__main__":
+    debug_context()
     loop = asyncio.get_event_loop()
     try:
         loop.run_until_complete(run())
