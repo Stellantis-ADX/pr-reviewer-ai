@@ -142,5 +142,11 @@ def handle_review_comment(heavy_bot: Bot, options: Options, prompts: Prompts):
             commenter.review_comment_reply(
                 pull_number, top_level_comment, reply.message
             )
+        else:
+            info(
+                f"Skipped: {context.event_name} event:"
+                f" comment does not contain {COMMENT_TAG} or {COMMENT_REPLY_TAG}"
+                f" or {BOT_NAME} in the body"
+            )
     else:
         info(f"Skipped: {context.event_name} event is from the bot itself")

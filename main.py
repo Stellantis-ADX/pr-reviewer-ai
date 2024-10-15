@@ -1,7 +1,3 @@
-# from dotenv import load_dotenv
-#
-# load_dotenv(dotenv_path="test/pull_request.env")
-
 import asyncio
 import json
 import os
@@ -10,7 +6,8 @@ import traceback
 from pathlib import Path
 
 from box import Box
-from github_action_utils import error, notice
+from github_action_utils import error
+from github_action_utils import notice
 from github_action_utils import notice as warning
 
 from core.bot_hf import HFBot, HFOptions
@@ -35,6 +32,7 @@ WORKSPACE_PATH = Path(__file__).resolve().parent
 
 sys.path.insert(1, str(WORKSPACE_PATH))
 
+
 def debug_context():
     payload = {}
     if "GITHUB_EVENT_PATH" in os.environ:
@@ -49,7 +47,10 @@ def debug_context():
         else:
             notice(f"[EARLY DEBUG]: GITHUB_EVENT_PATH {event_path} does not exist")
     payload = json.dumps(payload, indent=2)
-    notice(f"[EARLY DEBUG]: -------------------- EARLY DEBUG CONTEXT--------------------:\n {payload}")
+    notice(
+        f"[EARLY DEBUG]: -------------------- EARLY DEBUG CONTEXT--------------------:\n {payload}"
+    )
+
 
 async def run():
     try:

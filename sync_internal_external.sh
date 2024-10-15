@@ -2,8 +2,10 @@
 
 # Specify the list of files to exclude
 EXCLUDED_FILES=(
-  "action.yaml"
+  "action.yml"
   "sync_internal_external.sh"
+  "test/github_event_path_mock_pull_request.json"
+  "test/github_event_path_mock_pull_request_review_comment.json"
 )
 
 # Function to check if a file is in the excluded list
