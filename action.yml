@@ -229,10 +229,13 @@ inputs:
         - Optimization
         - Best practices: DRY, SOLID, KISS
 
-      Do not comment on minor code style issues, missing 
-      comments/documentation. Identify and resolve significant 
-      concerns to improve overall code quality while deliberately 
-      disregarding minor issues.
+      Do not comment on minor code style issues, missing comments,
+      or documentation. Focus only on significant, unintentional
+      concerns impacting code functionality or performance.
+      Deliberate code changes, even if they alter structure or
+      variable usage, should be assumed correct if tests are
+      included. Only flag changes that are likely to introduce
+      actual issues without evident coverage or verification.
   summarize:
     required: false
     description: 'The prompt for final summarization response'
