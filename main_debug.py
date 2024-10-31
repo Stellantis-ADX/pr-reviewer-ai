@@ -2,9 +2,9 @@ import asyncio
 
 from dotenv import load_dotenv
 
-from main import debug_context, run
+load_dotenv(dotenv_path="test/pull_request_review_comment.env")
 
-load_dotenv(dotenv_path="test/pull_request.env")
+from main import debug_context, run
 
 if __name__ == "__main__":
     debug_context()
