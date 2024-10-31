@@ -15,8 +15,8 @@ class TokenLimits:
             self.response_tokens = 1000
         elif model == "big":
             # TODO change once big model is deployed
-            self.max_tokens = 3100
-            self.response_tokens = 1000
+            self.max_tokens = 32600
+            self.response_tokens = 4000
         elif model == "mistral-small-azure":
             self.max_tokens = 4000
             self.response_tokens = 1000

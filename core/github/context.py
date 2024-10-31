@@ -21,7 +21,7 @@ class GithubActionContext:
                     self.payload = Box(json.load(f))
                     if self.payload.get("payload", None) is not None:
                         self.payload = self.payload.payload
-
+                self.payload["repository"]["full_name"] = self.full_name
             else:
                 print(f"GITHUB_EVENT_PATH {event_path} does not exist")
 
@@ -41,6 +41,10 @@ class GithubActionContext:
         )
 
     @property
+    def full_name(self):
+        return f"{self.repo['owner']}/{self.repo['repo']}"
+
+    @property
     def issue(self) -> Dict[str, str]:
         return {
             **self.repo,
@@ -56,10 +60,10 @@ class GithubActionContext:
         if "GITHUB_REPOSITORY" in os.environ:
             owner, repo = os.environ["GITHUB_REPOSITORY"].split("/")
             return {"owner": owner, "repo": repo}
-        if "repository" in self.payload:
+        if "pull_request" in self.payload:
             return {
-                "owner": self.payload["repository"]["owner"]["login"],
-                "repo": self.payload["repository"]["name"],
+                "owner": self.payload["pull_request"]["base"]["repo"]["owner"]["login"],
+                "repo": self.payload["pull_request"]["base"]["repo"]["name"],
             }
         raise ValueError(
             "context.repo requires a GITHUB_REPOSITORY environment variable like 'owner/repo'"
