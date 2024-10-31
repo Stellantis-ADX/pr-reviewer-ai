@@ -4,7 +4,7 @@ from pathlib import Path
 
 from core.input_reader import read_yaml_file
 
-AVATAR_URL = "https://github.adx.fcagroup.com/avatars/u/355"
+AVATAR_URL = "https://avatars.githubusercontent.com/u/124881756"
 ROOT_FOLDER = Path(__file__).resolve().parent.parent
 ACTION_INPUTS = (
     {"inputs": json.loads(os.environ.get("INPUTS").strip("'"))}
