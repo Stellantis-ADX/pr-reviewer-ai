@@ -1,10 +1,9 @@
 # DevToolsAi PR Reviewer
 
-This project is inspired by CodeRabbit. 
-However, the original CodeRabbit is no longer maintained, so it was forked, improved, and rewritten from scratch in Python. 
+This project is inspired by CodeRabbit.
+However, as the original CodeRabbit is no longer maintained, the concept was adopted, refined, and developed in Python.
 Another motivation was to use it within Stellantis and run it on internal deployed models, 
 ensuring that no data is sent to OpenAI servers.
-
 
 
 # AI-based PR reviewer and summarizer
