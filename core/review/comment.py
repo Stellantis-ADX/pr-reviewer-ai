@@ -15,7 +15,7 @@ from core.tokenizer import get_token_count
 
 
 def bot_call_itself(comment: Box) -> bool:
-    if TAGS.COMMENT_TAG in comment.body and TAGS.COMMENT_REPLY_TAG in comment.body:
+    if TAGS.COMMENT_REPLY_TAG in comment.body:
         notice(f"Skipped: {GITHUB_CONTEXT.event_name} event is from the bot itself")
         return True
 
