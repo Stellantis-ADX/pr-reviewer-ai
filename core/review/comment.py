@@ -1,152 +1,110 @@
-from github_action_utils import notice as info
-from github_action_utils import notice as warning
+from __future__ import annotations
 
-from core.bot import Bot
-from core.commenter import Commenter
-from core.consts import BOT_NAME
-from core.github.context import GITHUB_ACTION_CONTEXT
-from core.github.github import GITHUB_API
-from core.schemas.inputs import Inputs
+from box import Box
+from github_action_utils import notice
+
+from core.bots.bot import Bot
+from core.commenter import GithubCommentManager
+from core.github import GITHUB_CONTEXT
+from core.schemas.comment_reply import CommentReply
 from core.schemas.options import Options
-from core.schemas.prompts import Prompts
-from core.templates.tags import COMMENT_REPLY_TAG, COMMENT_TAG, SUMMARIZE_TAG
+from core.schemas.pr_common import PRDescription, PRInfo
+from core.schemas.prompts import ExistingSummarizedComment, Prompts
+from core.templates.tags import TAGS
 from core.tokenizer import get_token_count
-from core.utils import git_diff_from_discussion
 
-context = GITHUB_ACTION_CONTEXT
-repo = GITHUB_API.get_repo(context.payload.repository.full_name)
+
+def bot_call_itself(comment: Box) -> bool:
+    if TAGS.COMMENT_TAG in comment.body and TAGS.COMMENT_REPLY_TAG in comment.body:
+        notice(f"Skipped: {GITHUB_CONTEXT.event_name} event is from the bot itself")
+        return True
+
+    return False
+
+
+def is_token_limit_exceeded(tokens: int, token_limits: int) -> bool:
+    return tokens > token_limits
 
 
 def handle_review_comment(heavy_bot: Bot, options: Options, prompts: Prompts):
-    commenter = Commenter(context)
-    inputs = Inputs()
-    if context.event_name != "pull_request_review_comment":
-        warning(
-            f"Skipped: {context.event_name} is not a pull_request_review_comment event"
+    if not GITHUB_CONTEXT.is_context_valid(
+        event_names=("pull_request_review_comment",)
+    ):
+        return
+
+    pr_description = PRDescription()
+    pr_info = PRInfo()
+
+    comment = GITHUB_CONTEXT.payload.comment
+    if bot_call_itself(comment):
+        return
+
+    commenter = GithubCommentManager()
+    comment_reply = CommentReply().init_with(
+        comment=comment, comment_manager=commenter, pr_info=pr_info
+    )
+
+    if not comment_reply.is_top_level_comment_found:
+        return
+
+    if not comment_reply.is_bot_mentioned_in_comment_chain:
+        return
+
+    if not comment_reply.diff:
+        # TODO verify if file_diff is needed, only once we don't have a diff,
+        # when we call the bot on comment without diff
+        commenter.review_comment_reply(
+            pr_info.number,
+            comment_reply.top_level_comment,
+            message="Cannot reply to this comment as diff could not be found.",
         )
         return
 
-    if not context.payload:
-        warning(f"Skipped: {context.event_name} event is missing payload.")
-        return
+    final_prompt = prompts.render_comment(
+        comment_reply=comment_reply,
+        pr_description=pr_description,
+        ai_summary=None,
+        exclude="file_content",
+    )
 
-    comment = context.payload.get("comment")
-    if comment is None:
-        warning(f"Skipped: {context.event_name} event is missing comment")
-        return
-    pull_request = context.payload.get("pull_request")
-    repository = context.payload.get("repository")
-    if pull_request is None or repository is None:
-        print(f"Skipped: {context.event_name} event is missing pull_request")
-        return
-    inputs.title = pull_request.title
-    if pull_request.body:
-        inputs.description = commenter.get_description(pull_request.body)
+    tokens_prompt = get_token_count(final_prompt)
 
-    if context.payload.get("action") != "created":
-        warning(f"Skipped: {context.event_name} event is not created")
-        return
-    if COMMENT_TAG not in comment.body and COMMENT_REPLY_TAG not in comment.body:
-        pull_number = pull_request.number
-
-        inputs.comment = f"{comment.user.login}: {comment.body}"
-
-        inputs.diff = git_diff_from_discussion(
-            comment.diff_hunk,
-            start_line=comment.start_line,
-            end_line=comment.original_line,
-            html_url=comment.html_url,
+    if is_token_limit_exceeded(
+        tokens_prompt, token_limits=options.heavy_token_limits.request_tokens
+    ):
+        print(f"TOKENS: {tokens_prompt} vs {options.heavy_token_limits.request_tokens}")
+        commenter.review_comment_reply(
+            pr_info.number,
+            comment_reply.top_level_comment,
+            message="Cannot reply to this comment as diff being commented is too large and"
+            " exceeds the token limit.",
         )
-        inputs.filename = comment.path
-        comment_chain, top_level_comment = commenter.get_comment_chain(
-            pull_number, comment
+        return
+
+    if not is_token_limit_exceeded(
+        tokens_prompt + comment_reply.file.content_tokens,
+        token_limits=options.heavy_token_limits.request_tokens,
+    ):
+        final_prompt = prompts.render_comment(
+            comment_reply=comment_reply,
+            pr_description=pr_description,
+            ai_summary=None,
+        )
+        tokens_prompt = get_token_count(final_prompt)
+
+    existing_ai_summary = ExistingSummarizedComment(commenter=commenter).ai_summary
+
+    if not is_token_limit_exceeded(
+        tokens_prompt + existing_ai_summary.short_summary_tokens,
+        token_limits=options.heavy_token_limits.request_tokens,
+    ):
+        final_prompt = prompts.render_comment(
+            comment_reply=comment_reply,
+            pr_description=pr_description,
+            ai_summary=existing_ai_summary,
         )
 
-        if top_level_comment is None:
-            warning("Failed to find the top-level comment to reply to")
-            return
-
-        inputs.comment_chain = comment_chain
-        inputs.print()
-
-        if (
-            COMMENT_TAG in comment_chain
-            or COMMENT_REPLY_TAG in comment_chain
-            or BOT_NAME in comment.body.lower()
-        ):
-            file_diff = ""
-            try:
-                diff_all = repo.compare(
-                    pull_request.base.sha,
-                    pull_request.head.sha,
-                )
-                files = diff_all.files
-                if files is not None:
-                    file = next((f for f in files if f.filename == comment.path), None)
-                    if file is not None and file.patch is not None:
-                        file_diff = file.patch
-            except Exception as error:
-                warning(f"Failed to get file diff: {error}, skipping.")
-
-            if len(inputs.diff) == 0:
-                if len(file_diff) > 0:
-                    inputs.diff = file_diff
-                    file_diff = ""
-                else:
-                    commenter.review_comment_reply(
-                        pull_number,
-                        top_level_comment,
-                        "Cannot reply to this comment as diff could not be found.",
-                    )
-                    return
-
-            tokens = get_token_count(prompts.render_comment(inputs))
-
-            if tokens > options.heavy_token_limits.request_tokens:
-                print(
-                    f"TOKENS: {tokens} vs {options.heavy_token_limits.request_tokens}"
-                )
-                commenter.review_comment_reply(
-                    pull_number,
-                    top_level_comment,
-                    "Cannot reply to this comment as diff being commented is too large and"
-                    " exceeds the token limit.",
-                )
-                return
-
-            if len(file_diff) > 0:
-                file_diff_count = prompts.comment.template.count("$file_diff")
-                file_diff_tokens = get_token_count(file_diff)
-                if (
-                    file_diff_count > 0
-                    and tokens + file_diff_tokens * file_diff_count
-                    <= options.heavy_token_limits.request_tokens
-                ):
-                    tokens += file_diff_tokens * file_diff_count
-                    inputs.file_diff = file_diff
-
-            summary = commenter.find_issue_comment_with_tag(SUMMARIZE_TAG, pull_number)
-            if summary:
-                short_summary = commenter.get_short_summary(summary.body)
-                short_summary_tokens = get_token_count(short_summary)
-                if (
-                    tokens + short_summary_tokens
-                    <= options.heavy_token_limits.request_tokens
-                ):
-                    tokens += short_summary_tokens
-                    inputs.short_summary = short_summary
-
-            inputs.print()
-            reply = heavy_bot.chat(prompts.render_comment(inputs), {})
-
-            commenter.review_comment_reply(
-                pull_number, top_level_comment, reply.message
-            )
-        else:
-            info(
-                f"Skipped: {context.event_name} event:"
-                f" comment does not contain {COMMENT_TAG} or {COMMENT_REPLY_TAG}"
-                f" or {BOT_NAME} in the body"
-            )
-    else:
-        info(f"Skipped: {context.event_name} event is from the bot itself")
+    reply = heavy_bot.chat(final_prompt)
+    commenter.review_comment_reply(
+        pr_info.number, comment_reply.top_level_comment, reply.message
+    )

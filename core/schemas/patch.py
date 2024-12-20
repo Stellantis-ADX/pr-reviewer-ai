@@ -1,7 +1,19 @@
+from __future__ import annotations
+
 import re
+from typing import TYPE_CHECKING, Iterator, Tuple
 
 from box import Box
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, computed_field
+
+if TYPE_CHECKING:  # a hack to avoid circular imports, when we ONLY want to type hint
+    # https://peps.python.org/pep-0563/#runtime-annotation-resolution-and-type-checking
+    from core.commenter import GithubCommentManager
+    from core.schemas.comment_chains import CommentChains
+    from core.schemas.files import FilteredFile
+
+from core.schemas.options import Options
+from core.tokenizer import get_token_count
 
 
 class Patch(BaseModel):
@@ -9,11 +21,91 @@ class Patch(BaseModel):
     end_line: int
     patch_str: str
 
+    @computed_field
+    @property
+    def tokens(self) -> int:
+        return get_token_count(self.patch_str)
+
     def __str__(self) -> str:
         return "\n".join([f"{line}" for line in self.patch_str.split("\n")])
 
 
-# TODO do the functions part of the class
+class Patches(BaseModel):
+    items: list[Patch]
+    items_str: str = Field(serialization_alias="patches", default="")
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    @computed_field
+    @property
+    def items_tokens(self) -> list[int]:
+        return [patch.tokens for patch in self.items]
+
+    def __str__(self) -> str:
+        return "\n".join([f"{patch}" for patch in self.items])
+
+    def compute_patch_packing_limit(self, tokens: int, options: Options) -> int:
+        patches_to_pack = 0
+        for item_token in self.items_tokens:
+            if tokens + item_token > options.heavy_token_limits.request_tokens:
+                print(
+                    f"only packing {patches_to_pack} / {len(self.items)} patches,"
+                    f" tokens: {tokens} / {options.heavy_token_limits.request_tokens}"
+                )
+                break
+            tokens += item_token
+            patches_to_pack += 1
+        return patches_to_pack
+
+    def tokens_count_wrt_packing_limit(self, patch_packing_limit: int) -> int:
+        return sum(self.items_tokens[:patch_packing_limit])
+
+    def __len__(self) -> int:
+        return len(self.items)
+
+    def __iter__(self) -> Iterator[Patch]:
+        return iter(self.items)
+
+    def __getitem__(self, index: int) -> Patch:
+        return self.items[index]
+
+
+def pack_patches_with_associated_comments_chains(
+    file: FilteredFile,
+    patch_packing_limit: int,
+    commenter: GithubCommentManager,
+    tokens: int,
+    options: Options,
+) -> str:
+    patches_packed = 0
+    patches_comments_chains: list[Tuple[Patch, CommentChains | str]] = (
+        file.compute_patch_associated_comment_chains(commenter)
+    )
+    patches_str = ""
+
+    for patch, comment_chains in patches_comments_chains:
+        if patches_packed >= patch_packing_limit:
+            print(
+                f"unable to pack more patches into this request, packed: {patches_packed},"
+                f" total patches: {len(file.patches)}, skipping."
+            )
+            break
+
+        patches_packed += 1
+
+        if comment_chains is None:
+            patches_str += f"\n{patch.patch_str}\n"
+            continue
+
+        if tokens + comment_chains.tokens < options.heavy_token_limits.request_tokens:
+            patches_str += f"\n---comment_chains---\n```\n{comment_chains}\n```\n"
+            patches_str += f"\n{patch.patch_str}\n"
+            tokens += comment_chains.tokens
+
+        patches_str += "\n---end_change_section---\n"
+
+    return patches_str
 
 
 def split_patch(patch: str) -> list[str]:

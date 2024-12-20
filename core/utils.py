@@ -1,12 +1,12 @@
 import contextlib
+import re
 import warnings
 from typing import Any, Dict
 
 import requests
 from urllib3.exceptions import InsecureRequestWarning
 
-from core.github.context import GITHUB_ACTION_CONTEXT
-from core.github.github import GITHUB_API
+from core.github import GITHUB_CONTEXT, REPO
 
 
 def get_input_default(inputs: Dict[str, Any], key: str) -> str:
@@ -61,25 +61,8 @@ def no_ssl_verification():
                 pass
 
 
-def git_diff_from_discussion(
-    diff: str, start_line: int, end_line: int, html_url: str
-) -> str:
-    try:
-        if "discussion" in html_url:
-            return "\n".join(diff.split("\n")[start_line : end_line + 1])
-    except Exception as e:
-        print(f"Failed to get diff from discussion: {e}")
-        print(f"Will use the diff_chunk from comment: {diff}")
-    return diff
-
-
 def get_total_new_lines():
-    # Authenticate with GitHub using the personal access token
-    github_context = GITHUB_ACTION_CONTEXT
-    repo = GITHUB_API.get_repo(github_context.payload.repository.full_name)
-
-    # Get the pull request
-    pull = repo.get_pull(github_context.payload.pull_request.number)
+    pull = REPO.get_pull(GITHUB_CONTEXT.payload.pull_request.number)
 
     # Initialize a variable to store the total number of new lines added
     total_new_lines = 0
@@ -105,3 +88,46 @@ def get_total_new_lines():
 
     # Return the total number of new lines added
     return total_new_lines
+
+
+def sanitize_code_block(comment: str, code_block_label: str) -> str:
+    code_block_start = f"```{code_block_label}"
+    code_block_end = "```"
+    line_number_regex = r"^ *(\d+): "
+
+    code_block_start_index = comment.find(code_block_start)
+
+    while code_block_start_index != -1:
+        code_block_end_index = comment.find(
+            code_block_end, code_block_start_index + len(code_block_start)
+        )
+
+        if code_block_end_index == -1:
+            break
+
+        code_block = comment[
+            code_block_start_index + len(code_block_start) : code_block_end_index
+        ]
+        sanitized_block = re.sub(line_number_regex, "", code_block, flags=re.MULTILINE)
+
+        comment = (
+            comment[: code_block_start_index + len(code_block_start)]
+            + sanitized_block
+            + comment[code_block_end_index:]
+        )
+
+        code_block_start_index = comment.find(
+            code_block_start,
+            code_block_start_index
+            + len(code_block_start)
+            + len(sanitized_block)
+            + len(code_block_end),
+        )
+
+    return comment
+
+
+def sanitize_response(comment: str) -> str:
+    comment = sanitize_code_block(comment, "suggestion")
+    comment = sanitize_code_block(comment, "diff")
+    return comment

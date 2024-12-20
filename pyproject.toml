@@ -21,7 +21,7 @@ text-generation = "^0.7.0"
 httpx = "^0.27.0"
 sentencepiece = "^0.2.0"
 protobuf = "^5.27.2"
-huggingface-hub = "^0.23.4"
+huggingface-hub = "^0.27.0"
 
 
 [tool.poetry.group.dev.dependencies]

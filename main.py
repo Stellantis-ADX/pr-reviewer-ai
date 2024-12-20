@@ -1,4 +1,3 @@
-import asyncio
 import json
 import os
 import sys
@@ -10,8 +9,8 @@ from github_action_utils import error
 from github_action_utils import notice
 from github_action_utils import notice as warning
 
-from core.bot_hf import HFBot, HFOptions
-from core.bot_mistral import MistralBot, MistralOptions
+from core.bots.bot_hf import HFBot, HFOptions
+from core.bots.bot_mistral import MistralBot, MistralOptions
 from core.consts import ACTION_INPUTS, PR_LINES_LIMIT
 from core.review.code import code_review
 from core.review.comment import handle_review_comment
@@ -39,20 +38,19 @@ def debug_context():
         event_path = os.environ["GITHUB_EVENT_PATH"]
         if Path(event_path).exists():
             with open(event_path, "r") as f:
-                # TODO check if need in real GITHUB_ACTIONS
                 payload = Box(json.load(f))
                 if payload.get("payload", None) is not None:
                     payload = payload.payload
 
         else:
-            notice(f"[EARLY DEBUG]: GITHUB_EVENT_PATH {event_path} does not exist")
+            notice(f"[DEBUG]: GITHUB_EVENT_PATH {event_path} does not exist")
     payload = json.dumps(payload, indent=2)
     notice(
-        f"[EARLY DEBUG]: -------------------- EARLY DEBUG CONTEXT--------------------:\n {payload}"
+        f"[DEBUG]: -------------------- EARLY DEBUG CONTEXT--------------------:\n {payload}"
     )
 
 
-async def run():
+def run():
     try:
         options = Options(
             debug=string_to_bool(get_input_default(ACTION_INPUTS, key="debug")),
@@ -195,8 +193,4 @@ async def run():
 
 if __name__ == "__main__":
     debug_context()
-    loop = asyncio.get_event_loop()
-    try:
-        loop.run_until_complete(run())
-    finally:
-        loop.close()
+    run()
