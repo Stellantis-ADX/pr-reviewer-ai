@@ -7,7 +7,7 @@ from github_action_utils import notice as info
 from openai import OpenAI, OpenAIError
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from core.bot import SYSTEM_MESSAGE, AiResponse, ModelOptions
+from core.bots.bot import SYSTEM_MESSAGE, AiResponse, ModelOptions
 from core.schemas.limits import TokenLimits
 from core.schemas.options import Options
 

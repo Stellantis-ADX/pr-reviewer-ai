@@ -187,11 +187,11 @@ inputs:
   heavy_model_port:
     required: false
     description: 'Port for the heavy model'
-    default: '44902'
+    default: '44951'
   model_temperature:
     required: false
     description: 'Temperature for language model'
-    default: '0.1'
+    default: '0.2'
   retries:
     required: false
     description:

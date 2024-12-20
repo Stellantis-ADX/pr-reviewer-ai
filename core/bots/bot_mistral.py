@@ -1,4 +1,3 @@
-import json
 import os
 import time
 from typing import Optional
@@ -6,7 +5,7 @@ from typing import Optional
 from github_action_utils import notice as info
 from mistralai.client import MistralClient
 
-from core.bot import SYSTEM_MESSAGE, AiResponse, Bot, ModelOptions
+from core.bots.bot import SYSTEM_MESSAGE, AiResponse, Bot, ModelOptions
 from core.schemas.limits import TokenLimits
 from core.schemas.options import Options
 
@@ -63,10 +62,10 @@ class MistralBot(Bot):
                 "Unable to initialize the Mistral API." "Please provide url and api_key"
             )
 
-    def chat(self, message: str, ids: dict[str, dict]) -> AiResponse:
+    def chat(self, message: str) -> AiResponse:
         start = time.time()
         if not message:
-            return AiResponse(message="", ids={})
+            return AiResponse()
 
         response = None
         try:
@@ -107,9 +106,4 @@ class MistralBot(Bot):
         if self.options.debug:
             info(f"Mistral AI responses: {response_text}")
 
-        new_ids = {
-            "parentMessageId": response.id if response else None,
-            "conversationId": response.id if response else None,
-        }
-
-        return AiResponse(message=response_text, ids=new_ids)
+        return AiResponse(message=response_text)

@@ -58,3 +58,19 @@ TAGS = SimpleNamespace(
     COMMIT_ID_START_TAG=COMMIT_ID_START_TAG,
     COMMIT_ID_END_TAG=COMMIT_ID_END_TAG,
 )
+
+
+def get_content_within_tags(content: str, start_tag: str, end_tag: str) -> str:
+    start = content.find(start_tag)
+    end = content.find(end_tag)
+    if start >= 0 and end >= 0:
+        return content[start + len(start_tag) : end]
+    return ""
+
+
+def remove_content_within_tags(content: str, start_tag: str, end_tag: str) -> str:
+    start = content.find(start_tag)
+    end = content.rfind(end_tag)
+    if start >= 0 and end >= 0:
+        return content[:start] + content[end + len(end_tag) :]
+    return content

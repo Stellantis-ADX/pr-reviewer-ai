@@ -1,7 +1,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Tuple
 
 from box import Box
 
@@ -17,7 +17,7 @@ class GithubActionContext:
             event_path = os.environ["GITHUB_EVENT_PATH"]
             if Path(event_path).exists():
                 with open(event_path, "r") as f:
-                    # TODO check if need in real GITHUB_ACTIONS
+                    # TODO check if it can be done with repository.get_environments()
                     self.payload = Box(json.load(f))
                     if self.payload.get("payload", None) is not None:
                         self.payload = self.payload.payload
@@ -75,5 +75,35 @@ class GithubActionContext:
         """
         return json.dumps(self.__dict__, indent=2)
 
+    def is_context_valid(self, event_names: Tuple[str, ...]) -> bool:
+        if not self.event_name in event_names:
+            print(f"Skipped: {self.event_name} is not a {event_names} event")
+            return False
 
-GITHUB_ACTION_CONTEXT = GithubActionContext()
+        if not self.payload:
+            print(f"Skipped: {self.event_name} event is missing payload.")
+            return False
+
+        if self.payload.get("pull_request") is None:
+            print(f"Skipped: {self.event_name} event is missing pull_request.")
+            return False
+
+        if self.payload.get("repository") is None:
+            print(f"Skipped: {self.event_name} event is missing repository.")
+            return False
+
+        if (
+            self.payload.get("comment") is None
+            and "pull_request_review_comment" in event_names
+        ):
+            print(f"Skipped: {self.event_name} event is missing comment.")
+            return False
+
+        if (
+            self.payload.get("action") != "created"
+            and "pull_request_review_comment" in event_names
+        ):
+            print(f"Skipped: {self.event_name} event has not action created")
+            return False
+
+        return True

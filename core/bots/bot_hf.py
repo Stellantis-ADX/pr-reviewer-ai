@@ -6,7 +6,7 @@ import requests
 from github_action_utils import notice as info
 from huggingface_hub import InferenceClient
 
-from core.bot import SYSTEM_MESSAGE, AiResponse, Bot, ModelOptions
+from core.bots.bot import SYSTEM_MESSAGE, AiResponse, Bot, ModelOptions
 from core.schemas.limits import TokenLimits
 from core.schemas.options import Options
 from core.tokenizer import get_token_count
@@ -14,8 +14,22 @@ from core.utils import no_ssl_verification
 
 
 class HFOptions(ModelOptions):
+    MODEL_NAME_MAPPING = {
+        "small": "mistral-small",
+        "big": "meta/llama-3.1-70b-instruct",
+    }
+    APPLICATION_NAME_MAPPING = {"small": "pr-reviewer-small", "big": "kllama3"}
+
     def __init__(self, model: str, token_limits: Optional[TokenLimits] = None):
         super().__init__(model, token_limits)
+
+    @property
+    def real_model_name(self) -> str:
+        return self.MODEL_NAME_MAPPING.get(self.model, self.model)
+
+    @property
+    def application_name(self) -> str:
+        return self.APPLICATION_NAME_MAPPING.get(self.model, self.model)
 
 
 def start_pr_reviewer(
@@ -25,10 +39,10 @@ def start_pr_reviewer(
     with no_ssl_verification():
         for url in urls_available.keys():
             url_state = (
-                f"https://{url}/cmd/state?application=pr-reviewer-{hf_options.model}"
+                f"https://{url}/cmd/state?application={hf_options.application_name}"
             )
             url_start = (
-                f"https://{url}/cmd/start?application=pr-reviewer-{hf_options.model}"
+                f"https://{url}/cmd/start?application={hf_options.application_name}"
             )
             print("url_state: ", url_state)
             try:
@@ -58,11 +72,13 @@ def start_pr_reviewer(
                         )
                         time.sleep(timeout_start_application)
             except Exception as e:
-                print(f"Failed to start PR reviewer {hf_options.model}: {e}")
+                print(
+                    f"Failed to start [{hf_options.application_name}] {hf_options.model}: {e}"
+                )
                 urls_available[url] = False
 
             print(
-                f"Failed to start PR reviewer {hf_options.model} after {options.retries} attempts"
+                f"Failed to start [{hf_options.application_name}] {hf_options.model} after {options.retries} attempts"
             )
             urls_available[url] = False
 
@@ -75,10 +91,7 @@ class HFBot(Bot):
     ):
         super().__init__(options, hf_options)
         self.api = {}
-        # TODO temporary solution to not start big model (it's not deployed yet)
-        urls_available = (
-            {} if hf_options.model == "big" else start_pr_reviewer(hf_options, options)
-        )
+        urls_available = start_pr_reviewer(hf_options, options)
         api_url = next((k for k, v in urls_available.items() if v), "fake_host")
         # TODO I'll find a way to do it better with backup bot option
         # Right now let's allow api_url be fake_host sometimes
@@ -99,6 +112,7 @@ class HFBot(Bot):
             "max_response_tokens": hf_options.token_limits.response_tokens,
             "temperature": options.model_temperature,
             "model": hf_options.model,
+            "model_name": hf_options.real_model_name,
             "base_url": api_url,
             "light_model_port": options.light_model_port,
             "heavy_model_port": options.heavy_model_port,
@@ -110,10 +124,10 @@ class HFBot(Bot):
         #         f"See frontend of applications here: https://{api_url} "
         #     )
 
-    def chat(self, message: str, ids: dict[str, dict]) -> AiResponse:
+    def chat(self, message: str) -> AiResponse:
         start = time.time()
         if not message:
-            return AiResponse(message="", ids={})
+            return AiResponse()
 
         response = None
 
@@ -122,12 +136,13 @@ class HFBot(Bot):
             if self.api["model"] == "small"
             else self.api["heavy_model_port"]
         )
+
         # It could contain port, so we need to remove it
         inference_url = self.api["base_url"].split(":")[0]
         inference_url = f"http://{inference_url}:{port}"
         self.client = InferenceClient(
-            inference_url,
-            timeout=120,
+            base_url=inference_url,
+            timeout=180,
         )
         print(f"Prompt: {get_token_count(message)} tokens")
         print(f"System_message: {get_token_count(self.api['system_message'])} tokens")
@@ -141,7 +156,7 @@ class HFBot(Bot):
             for attempt in range(1, self.options.retries + 1):
                 try:
                     response = self.client.chat_completion(
-                        model=inference_url,
+                        model=self.api["model_name"],
                         messages=[
                             {"role": "user", "content": message},
                             {
@@ -161,7 +176,7 @@ class HFBot(Bot):
                         if e.response.status_code == 504:
                             backoff = 2**attempt
                             info(
-                                f"Received 504 Server Error: Gateway Time-out on {inference_url}, "
+                                f"Received 504 Server Error: Gateway Time-out on {inference_url} , "
                                 f"retrying in {backoff} seconds\n"
                                 f"Retrying...attempt {attempt}/{self.options.retries}"
                             )
@@ -195,15 +210,10 @@ class HFBot(Bot):
         if response_text.startswith("with "):
             response_text = response_text[5:]
 
-        new_ids = {
-            "parentMessageId": None,
-            "conversationId": None,
-        }
-
         if self.back_up_bot is not None and not response_text:
             info(
                 f"Using backup bot from Azure -> {self.back_up_bot.model_options.model}"
             )
-            return self.back_up_bot.chat(message, ids)
+            return self.back_up_bot.chat(message)
 
-        return AiResponse(message=response_text, ids=new_ids)
+        return AiResponse(message=response_text)

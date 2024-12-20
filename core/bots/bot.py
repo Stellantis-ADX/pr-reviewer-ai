@@ -14,21 +14,19 @@ SYSTEM_MESSAGE = (
 
 
 class Ids(BaseModel):
-    conversationId: Optional[str]
-    parentMessageId: Optional[str]
+    # Currently not used
+    conversationId: Optional[str] = None
+    parentMessageId: Optional[str] = None
 
     def __str__(self) -> str:
         return f"conversationId: {self.conversationId}, parentMessageId: {self.parentMessageId} \n"
 
 
 class AiResponse(BaseModel):
-    message: str
-    ids: Ids
+    message: str = ""
 
     def __str__(self) -> str:
-        return str(self.ids) + "\n".join(
-            [f"{line}" for line in self.message.split("\n")]
-        )
+        return "\n".join([f"{line}" for line in self.message.split("\n")])
 
 
 class ModelOptions(ABC):
@@ -47,5 +45,5 @@ class Bot(ABC):
         self.model_options = model_options
 
     @abstractmethod
-    def chat(self, message, ids):
+    def chat(self, message: str) -> AiResponse:
         pass
