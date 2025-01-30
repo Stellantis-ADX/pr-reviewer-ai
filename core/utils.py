@@ -4,6 +4,8 @@ import warnings
 from typing import Any, Dict
 
 import requests
+from box import Box
+from github.PullRequestComment import PullRequestComment
 from urllib3.exceptions import InsecureRequestWarning
 
 from core.github import GITHUB_CONTEXT, REPO
@@ -131,3 +133,19 @@ def sanitize_response(comment: str) -> str:
     comment = sanitize_code_block(comment, "suggestion")
     comment = sanitize_code_block(comment, "diff")
     return comment
+
+
+def from_box_comment_to_review_comment(
+    box_comment: Box, review_comments: list[PullRequestComment]
+) -> PullRequestComment:
+    for review_comment in review_comments:
+        if (
+            review_comment.html_url == box_comment.html_url
+            and review_comment.body == box_comment.body
+            and review_comment.path == box_comment.path
+        ):
+            return review_comment
+
+    raise ValueError(
+        "Review comment box cannot be found in the list of review comments"
+    )

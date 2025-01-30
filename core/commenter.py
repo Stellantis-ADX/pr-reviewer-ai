@@ -13,6 +13,7 @@ from github_action_utils import warning
 
 from core.consts import DISMISSAL_MESSAGE
 from core.github import GITHUB_CONTEXT, REPO
+from core.utils import from_box_comment_to_review_comment
 
 if TYPE_CHECKING:  # a hack to avoid circular imports, when we ONLY want to type hint
     # https://peps.python.org/pep-0563/#runtime-annotation-resolution-and-type-checking
@@ -340,6 +341,7 @@ class GithubCommentManager:
             review_comments = self.list_review_comments(pull_number)
             print(f"Review comments: {review_comments}")
             print(f"Comment: {comment}")
+            comment = from_box_comment_to_review_comment(comment, review_comments)
             top_level_comment = self.get_top_level_comment(review_comments, comment)
             chain = self.compose_comment_chain(review_comments, top_level_comment)
             return chain, top_level_comment
@@ -348,11 +350,9 @@ class GithubCommentManager:
             return "", None
 
     def get_top_level_comment(
-        self, review_comments: list[PullRequestComment], comment: Box
+        self, review_comments: list[PullRequestComment], comment: PullRequestComment
     ) -> PullRequestComment:
-        # TODO try to cast to PullRequestComment
-        # If the comment object has an in_reply_to_id attribute
-        if comment.get("in_reply_to_id", None) is not None:
+        if comment.in_reply_to_id is not None:
             # Find the parent comment in the review_comments list
             parent_comment = next(
                 (cmt for cmt in review_comments if cmt.id == comment.in_reply_to_id),

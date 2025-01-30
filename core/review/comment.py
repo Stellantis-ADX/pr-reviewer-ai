@@ -17,7 +17,8 @@ from core.tokenizer import get_token_count
 def bot_call_itself(comment: Box) -> bool:
     if TAGS.COMMENT_REPLY_TAG in comment.body or (
         # TODO: This is a temporary fix to avoid bot calling itself
-        # The problem is comment from bot is posted with COMMENT_TAG instead of COMMENT_REPLY_TAG
+        # The problem is comment from bot is posted with COMMENT_TAG and then never updated to COMMENT_REPLY_TAG
+        # The problem is fixed, but let's keep this check for a while
         TAGS.COMMENT_TAG in comment.body
         and comment.user.login == "gh-action-ssh[bot]"
     ):
