@@ -106,7 +106,7 @@ REVIEW_FILE_DIFF = string.Template(
     "- Focus solely on offering specific, objective insights based on the given context and refrain "
     "from making broad comments about potential impacts on the system or question intentions behind the changes.\n\n"
     "If there are no issues found on a line range, simply don't include that line range in your response.\n\n"
-    "If you find a particularly elegant or clever solution, you may respond with "Neat!" for that line range.\n\n"
+    "If you find a particularly elegant or clever solution, you may respond with \"Neat!\" for that line range.\n\n"
     "## Example\n\n"
     "### Example changes\n\n"
     "---new_hunk - --\n"
